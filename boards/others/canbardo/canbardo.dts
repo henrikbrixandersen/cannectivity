@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2024 Henrik Brix Andersen <henrik@brixandersen.dk>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+/* TODO: same70n20b.dtsi */
+#include <atmel/same70q21b.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include "canbardo-pinctrl.dtsi"
+
+/ {
+	model = "CANbardo board";
+	compatible = "canbardo", "atmel,same70n20b", "atmel,same70b";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,canbus = &can0;
+	};
+
+	aliases {
+		led0 = &can_0_ledg;
+		sw0 = &sw;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		can_0_ledr: can_0_ledr {
+			gpios = <&piod 22 GPIO_ACTIVE_LOW>;
+			label = "CAN0 LED red";
+		};
+
+		can_0_ledg: can_0_ledg {
+			gpios = <&piod 24 GPIO_ACTIVE_LOW>;
+			label = "CAN0 LED green";
+		};
+
+		can_0_ledy: can_0_ledy {
+			gpios = <&piod 25  GPIO_ACTIVE_LOW>;
+			label = "CAN0 LED yellow";
+		};
+
+		can_1_ledr: can_1_ledr {
+			gpios = <&piod 17  GPIO_ACTIVE_LOW>;
+			label = "CAN1 LED red";
+		};
+
+		can_1_ledg: can_1_ledg {
+			gpios = <&piod 18 GPIO_ACTIVE_LOW>;
+			label = "CAN1 LED green";
+		};
+
+		can_1_ledy: can_1_ledy {
+			gpios = <&piod 19 GPIO_ACTIVE_LOW>;
+			label = "CAN1 LED yellow";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		sw: sw {
+			label = "SW";
+			gpios = <&pioa 1 GPIO_ACTIVE_LOW>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	transceiver0: can-phy0 {
+		compatible = "microchip,mcp2558fd", "can-transceiver-gpio";
+		enable-gpios = <&piod 26 GPIO_ACTIVE_LOW>;
+		max-bitrate = <8000000>;
+		#phy-cells = <0>;
+	};
+
+	transceiver1: can-phy1 {
+		compatible = "microchip,mcp2558fd", "can-transceiver-gpio";
+		enable-gpios = <&piod 20 GPIO_ACTIVE_LOW>;
+		max-bitrate = <8000000>;
+		#phy-cells = <0>;
+	};
+};
+
+&cpu0 {
+	clock-frequency = <300000000>;
+};
+
+&usart1 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&usart1_default>;
+	pinctrl-names = "default";
+};
+
+zephyr_udc0: &usbhs {
+	status = "okay";
+};
+
+&can0 {
+	status = "okay";
+	pinctrl-0 = <&can0_default>;
+	pinctrl-names = "default";
+	phys = <&transceiver0>;
+};
+
+&can1 {
+	status = "okay";
+	pinctrl-0 = <&can1_default>;
+	pinctrl-names = "default";
+	phys = <&transceiver1>;
+};
