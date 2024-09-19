@@ -1,10 +1,2 @@
 # Copyright (c) 2024 Henrik Brix Andersen <henrik@brixandersen.dk>
 # SPDX-License-Identifier: Apache-2.0
-
-name: cannectivity
-build:
-  kconfig: Kconfig
-  cmake: .
-  settings:
-    board_root: .
-    dts_root: .
