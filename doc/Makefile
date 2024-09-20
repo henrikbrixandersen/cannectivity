@@ -9,13 +9,16 @@ SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = build
 
-.PHONY: Makefile clean help html
+.PHONY: Makefile clean doxygen help html
 
-html: Makefile
+doxygen: Doxyfile
+	doxygen $?
+
+html: Makefile doxygen
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 clean:
-	$(RM) -r build
+	$(RM) -r build xml

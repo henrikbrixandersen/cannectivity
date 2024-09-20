@@ -23,5 +23,11 @@ with the following content and run ``west update``:
          revision: main
          path: custom/cannectivity # adjust the path as needed
 
+
+Public API
+----------
+
+.. doxygenindex::
+
 .. _Zephyr module:
    https://docs.zephyrproject.org/latest/develop/modules.html
