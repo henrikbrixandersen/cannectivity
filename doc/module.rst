@@ -7,3 +7,5 @@ Zephyr Module
 
 Public API
 ----------
+
+.. doxygenindex::

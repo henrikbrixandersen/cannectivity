@@ -13,4 +13,5 @@
 __pycache__/
 
 # docs
-/doc/build*
+/doc/build
+/doc/xml
