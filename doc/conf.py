@@ -11,7 +11,10 @@ project = 'CANnectivity'
 copyright = '2024, The CANnectivity Developers'
 author = 'The CANnectivity Developers'
 
-extensions = []
+extensions = ['breathe']
+
+breathe_projects = {"cannectivity": "xml/"}
+breathe_default_project = "cannectivity"
 
 exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
 
