@@ -23,3 +23,9 @@ with the following content and run ``west update``:
          url: https://github.com/CANnectivity/cannectivity.git
          revision: main
          path: custom/cannectivity # adjust the path as needed
+
+Public API
+----------
+
+.. doxygenindex::
+
