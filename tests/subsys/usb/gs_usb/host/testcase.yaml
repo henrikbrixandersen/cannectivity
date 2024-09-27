@@ -18,6 +18,14 @@ tests:
       - can
     integration_platforms:
       - frdm_k64f/mk64f12
+  usb.gs_usb.host.no_compat:
+    depends_on:
+      - usb_device
+      - can
+    integration_platforms:
+      - frdm_k64f/mk64f12
+    extra_configs:
+      - CONFIG_USB_DEVICE_GS_USB_COMPATIBILITY_MODE=n
   usb.gs_usb.host.usbd_next:
     depends_on:
       - usbd
@@ -26,3 +34,13 @@ tests:
       - frdm_k64f/mk64f12
     extra_args:
       - FILE_SUFFIX=usbd_next
+  usb.gs_usb.host.usbd_next.no_compat:
+    depends_on:
+      - usbd
+      - can
+    integration_platforms:
+      - frdm_k64f/mk64f12
+    extra_args:
+      - FILE_SUFFIX=usbd_next
+    extra_configs:
+      - CONFIG_USBD_GS_USB_COMPATIBILITY_MODE=n

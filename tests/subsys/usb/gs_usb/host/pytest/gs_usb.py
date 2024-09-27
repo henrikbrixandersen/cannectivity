@@ -21,6 +21,11 @@ class GsUSBDeviceNotFound(Exception):
     Geschwister Schneider USB/CAN device not found.
     """
 
+class GsUSBDeviceEndpointNotFound(Exception):
+    """
+    Geschwister Schneider USB/CAN device endpoint not found.
+    """
+
 class GsUSBbRequest(IntEnum):
     """
     Geschwister Schneider USB/CAN protocol bRequest types.
@@ -120,6 +125,19 @@ class GsUSBCANChannelFlag(IntFlag):
     FD = 2**8
     # CAN channel uses bus error reporting (unsupported, always enabled).
     BERR_REPORTING = 2**12
+
+class GsUSBCANFlag(IntFlag):
+    """
+    Geschwister Schneider USB/CAN protocol host frame CAN flags.
+    """
+    # RX overflow occurred.
+    OVERFLOW = 2**0
+    # CAN frame is in CAN FD frame format.
+    FD = 2**1
+    # CAN frame uses CAN FD Baud Rate Switch (BRS).
+    BRS = 2**2
+    # CAN frame has the CAN FD Error State Indicator (ESI) set.
+    ESI = 2**3
 
 class GsUSBCANChannelState(IntEnum):
     """
@@ -256,6 +274,26 @@ class GsUSBDeviceState:
     # CAN channel TX bus error count.
     txerr: int
 
+@dataclass
+class GsUSBHostFrame:
+    """
+    Geschwister Schneider USB/CAN protocol CAN host frame.
+    """
+    # Echo ID.
+    echo_id: int
+    # CAN ID.
+    can_id: int
+    # CAN DLC.
+    can_dlc: int
+    # CAN channel.
+    channel: int
+    # Host frame flags.
+    flags: GsUSBCANFlag
+    # Data.
+    data: bytes
+    # Timestamp.
+    timestamp: int = 0
+
 class GsUSB():
     """
     Utility class implementing the gs_usb protocol.
@@ -279,6 +317,35 @@ class GsUSB():
 
         device.set_configuration()
         self.device = device
+
+        cfg = device.get_active_configuration()
+        intf = cfg[(0,0)]
+
+        # Find first bulk IN endpoint
+        self.ep_in = usb.util.find_descriptor(intf, custom_match =
+                                              lambda e:
+                                              usb.util.endpoint_direction(e.bEndpointAddress) ==
+                                              usb.util.ENDPOINT_IN)
+
+        if self.ep_in is None:
+            logger.error('USB bulk IN endpoint not found')
+            raise GsUSBDeviceEndpointNotFound
+
+        # Find first bulk OUT endpoint
+        self.ep_out = usb.util.find_descriptor(intf, custom_match =
+                                               lambda e:
+                                               usb.util.endpoint_direction(e.bEndpointAddress) ==
+                                               usb.util.ENDPOINT_OUT)
+
+        # TODO: remove debug
+        #self.ep_out = intf[2]
+
+        if self.ep_out is None:
+            logger.error('USB bulk OUT endpoint not found')
+            raise GsUSBDeviceEndpointNotFound
+
+        logger.debug('found USB EPs IN 0x%02x, OUT 0x%02x', self.ep_in.bEndpointAddress,
+                     self.ep_out.bEndpointAddress)
 
         rtype = usb.util.build_request_type(usb.util.CTRL_OUT,
                                             usb.util.CTRL_TYPE_VENDOR,
@@ -411,3 +478,17 @@ class GsUSB():
                                          wValue = ch, data_or_wLength = struct.calcsize('<3I'))
 
         return GsUSBDeviceState(*struct.unpack('<3I', data))
+
+    def read(self, timeout: float) -> GsUSBHostFrame:
+        """Read a host frame."""
+        # TODO: implement read
+
+    def write(self, frame: GsUSBHostFrame) -> None:
+        """Write a host frame."""
+        # TODO: use timeout?
+        # TODO: encode FD frame
+        # TODO: omit timestamp in write
+        data = struct.pack('<2I3Bx8sI', *astuple(frame))
+        length = self.ep_out.write(data)
+
+        # TODO: verify length
