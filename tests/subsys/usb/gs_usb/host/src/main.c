@@ -81,6 +81,18 @@ static int fake_can_set_mode_delegate(const struct device *dev, can_mode_t mode)
 	return 0;
 }
 
+static int fake_can_send_delegate(const struct device *dev, const struct can_frame *frame,
+				  k_timeout_t timeout, can_tx_callback_t callback,
+				  void *user_data)
+{
+	LOG_DBG("%s: id = 0x%x, dlc = %d, flags = 0x%02x", dev->name, frame->id, frame->dlc,
+		frame->flags);
+
+	callback(dev, 0, user_data);
+
+	return 0;
+}
+
 static int event_cb(const struct device *dev, uint16_t ch, enum gs_usb_event event, void *user_data)
 {
 	uint32_t ud = POINTER_TO_UINT(user_data);
@@ -170,6 +182,7 @@ int main(void)
 	fake_can_start_fake.custom_fake = fake_can_start_delegate;
 	fake_can_stop_fake.custom_fake = fake_can_stop_delegate;
 	fake_can_set_mode_fake.custom_fake = fake_can_set_mode_delegate;
+	fake_can_send_fake.custom_fake = fake_can_send_delegate;
 
 	if (!device_is_ready(gs_usb)) {
 		LOG_ERR("gs_usb USB device not ready");
