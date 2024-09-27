@@ -8,8 +8,8 @@ Test suites for testing gs_usb
 import logging
 import pytest
 
-from gs_usb import  GsUSBCANChannelFeature, GsUSBCANChannelFlag, GsUSBCANChannelMode, \
-    GsUSBCANChannelState, GsUSBDeviceBittiming, GsUSBDeviceMode
+from gs_usb import GsUSBCANChannelFeature, GsUSBCANChannelFlag, GsUSBCANChannelMode, \
+    GsUSBCANChannelState, GsUSBDeviceBittiming, GsUSBDeviceMode, GsUSBCANFlag, GsUSBHostFrame
 
 logger = logging.getLogger(__name__)
 
@@ -193,3 +193,56 @@ class TestGsUsbRequests():
                 assert state.state == GsUSBCANChannelState.STOPPED
                 assert state.rxerr == 0
                 assert state.txerr == 0
+
+@pytest.mark.usefixtures('dut', 'dev')
+class TestGsUsbHostFrames():
+    """
+    Class for testing gs_usb host frames.
+    """
+
+    def test_classic(self, dut, dev) -> None:
+        """Test CAN classic host frames"""
+        for ch in FAKE_CHANNELS:
+            mode = GsUSBDeviceMode(GsUSBCANChannelMode.START, GsUSBCANChannelFlag.NORMAL)
+            dev.mode(ch, mode)
+
+            frame = GsUSBHostFrame(0, 0x10, 8, ch, 0, bytes(b'\x00\x11\x22\x33\x44\x55\x66\x77'))
+            dev.write(frame)
+
+            regex = fr'fake_can{ch}: id = 0x10, dlc = 8, flags = 0x00'
+            dut.readlines_until(regex=regex, timeout=TIMEOUT)
+
+            mode = GsUSBDeviceMode(GsUSBCANChannelMode.RESET, GsUSBCANChannelFlag.NORMAL)
+            dev.mode(ch, mode)
+
+    def test_canfd(self, dut, dev) -> None:
+        """Test CAN FD host frames"""
+        for ch in FAKE_CHANNELS:
+            mode = GsUSBDeviceMode(GsUSBCANChannelMode.START, GsUSBCANChannelFlag.FD)
+            dev.mode(ch, mode)
+
+            frame = GsUSBHostFrame(0, 0x23, 4, ch, GsUSBCANFlag.FD,
+                                   bytes(b'\x00\x11\x22\x33'))
+            dev.write(frame)
+
+            regex = fr'fake_can{ch}: id = 0x23, dlc = 4, flags = 0x04'
+            dut.readlines_until(regex=regex, timeout=TIMEOUT)
+
+            mode = GsUSBDeviceMode(GsUSBCANChannelMode.RESET, GsUSBCANChannelFlag.NORMAL)
+            dev.mode(ch, mode)
+
+    def test_echo(self, dut, dev) -> None:
+        """Test echo host frames"""
+        # TODO
+
+    def test_timestamp(self, dut, dev) -> None:
+        """Test timestamps in host frames"""
+        # TODO
+
+    def test_berr(self, dut, dev) -> None:
+        """Test bus error host frames"""
+        # TODO
+
+    def test_rx_overflow(self, dut, dev) -> None:
+        """Test RX overflow in host frames"""
+        # TODO
