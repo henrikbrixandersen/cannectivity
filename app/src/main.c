@@ -87,6 +87,8 @@ int main(void)
 		return err;
 	}
 
+	/* TODO: confirm DFU image if running under MCUboot booloader */
+
 	LOG_INF("CANnectivity firmware initialized with %u channel%s\n", ARRAY_SIZE(channels),
 		ARRAY_SIZE(channels) > 1 ? "s" : "");
 }
