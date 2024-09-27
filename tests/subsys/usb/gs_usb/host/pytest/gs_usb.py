@@ -121,6 +121,19 @@ class GsUSBCANChannelFlag(IntFlag):
     # CAN channel uses bus error reporting (unsupported, always enabled).
     BERR_REPORTING = 2**12
 
+class GsUSBCANFlag(IntFlag):
+    """
+    Geschwister Schneider USB/CAN protocol host frame CAN flags.
+    """
+    # RX overflow occurred.
+    OVERFLOW = 2**0
+    # CAN frame is in CAN FD frame format.
+    FD = 2**1
+    # CAN frame uses CAN FD Baud Rate Switch (BRS).
+    BRS = 2**2
+    # CAN frame has the CAN FD Error State Indicator (ESI) set.
+    ESI = 2**3
+
 class GsUSBCANChannelState(IntEnum):
     """
     Geschwister Schneider USB/CAN protocol CAN channel state.
@@ -255,6 +268,26 @@ class GsUSBDeviceState:
     rxerr: int
     # CAN channel TX bus error count.
     txerr: int
+
+@dataclass
+class GsUSBHostFrame:
+    """
+    Geschwister Schneider USB/CAN protocol CAN host frame.
+    """
+    # Echo ID.
+    echo_id: int
+    # CAN ID.
+    can_id: int
+    # CAN DLC.
+    can_dlc: int
+    # CAN channel.
+    channel: int
+    # Host frame flags.
+    flags: GsUSBCANFlag
+    # Data.
+    data: bytearray
+    # Timestamp.
+    timestamp: int
 
 class GsUSB():
     """

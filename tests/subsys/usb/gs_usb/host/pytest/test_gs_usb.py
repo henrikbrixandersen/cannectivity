@@ -193,3 +193,33 @@ class TestGsUsbRequests():
                 assert state.state == GsUSBCANChannelState.STOPPED
                 assert state.rxerr == 0
                 assert state.txerr == 0
+
+@pytest.mark.usefixtures('dut', 'dev')
+class TestGsUsbHostFrames():
+    """
+    Class for testing gs_usb host frames.
+    """
+
+    def test_classic(self, dut, dev) -> None:
+        """Test CAN classic host frames"""
+        # TODO
+
+    def test_canfd(self, dut, dev) -> None:
+        """Test CAN FD host frames"""
+        # TODO
+
+    def test_echo(self, dut, dev) -> None:
+        """Test echo host frames"""
+        # TODO
+
+    def test_timestamp(self, dut, dev) -> None:
+        """Test timestamps in host frames"""
+        # TODO
+
+    def test_berr(self, dut, dev) -> None:
+        """Test bus error host frames"""
+        # TODO
+
+    def test_rx_overflow(self, dut, dev) -> None:
+        """Test RX overflow in host frames"""
+        # TODO
