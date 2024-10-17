@@ -13,6 +13,7 @@
 LOG_MODULE_REGISTER(dfu, CONFIG_CANNECTIVITY_LOG_LEVEL);
 
 #define DFU_LED_NODE DT_ALIAS(mcuboot_led0)
+#define DFU_BUTTON_NODE DT_ALIAS(mcuboot_button0)
 
 static int dfu_led_init(void)
 {
@@ -31,6 +32,27 @@ static int dfu_led_init(void)
 		return err;
 	}
 #endif /* CONFIG_CANNECTIVITY_DFU_LED */
+
+	return 0;
+}
+
+static int dfu_button_init(void)
+{
+#ifdef CONFIG_CANNECTIVITY_DFU_BUTTON
+	struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DFU_BUTTON_NODE, gpios);
+	int err;
+
+	if (!gpio_is_ready_dt(&button)) {
+		LOG_ERR("DFU button device not ready");
+		return -ENODEV;
+	}
+
+	err = gpio_pin_configure_dt(&button, GPIO_INPUT);
+	if (err != 0) {
+		LOG_ERR("failed to configure DFU button (err %d)", err);
+		return err;
+	}
+#endif /* CONFIG_CANNECTIVITY_DFU_BUTTON */
 
 	return 0;
 }
@@ -54,5 +76,10 @@ int cannectivity_dfu_init(void)
 		LOG_INF("image confirmed");
 	}
 
-	return dfu_led_init();
+	err = dfu_led_init();
+	if (err != 0) {
+		return err;
+	}
+
+	return dfu_button_init();
 }

@@ -38,6 +38,7 @@ The CANnectivity firmware supports the following features, some of which depend 
 - CAN bus error reporting
 - Automatic gs_usb driver loading under Linux using custom [udev rules](99-cannectivity.rules)
 - Automatic WinUSB driver installation under Microsoft Windows 8.1 and newer
+- USB Device Firmware Upgrade (DFU) mode
 
 ## Hardware Requirements
 
@@ -97,6 +98,10 @@ provided. These can be selected by setting either `FILE_SUFFIX=usbd_next` or
 `FILE_SUFFIX=usbd_next_release`.
 
 After building, the firmware can be flashed to the board by running the `west flash` command.
+
+## USB Device Firmware Upgrade (DFU) Mode
+
+TODO
 
 ## CANnectivity as a Zephyr Module
 
