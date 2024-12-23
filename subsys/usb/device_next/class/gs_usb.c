@@ -28,11 +28,11 @@ struct gs_usb_desc {
 	struct usb_association_descriptor iad;
 	struct usb_if_descriptor if0;
 	struct usb_ep_descriptor if0_in_ep;
-	struct usb_ep_descriptor if0_dummy_ep;
-	struct usb_ep_descriptor if0_out_ep;
+	struct usb_ep_descriptor if0_out1_ep;
+	struct usb_ep_descriptor if0_out2_ep;
 	struct usb_ep_descriptor if0_hs_in_ep;
-	struct usb_ep_descriptor if0_hs_dummy_ep;
-	struct usb_ep_descriptor if0_hs_out_ep;
+	struct usb_ep_descriptor if0_hs_out1_ep;
+	struct usb_ep_descriptor if0_hs_out2_ep;
 	struct usb_desc_header nil_desc;
 };
 
@@ -817,10 +817,12 @@ static uint8_t gs_usb_get_bulk_out_ep_addr(struct usbd_class_data *const c_data)
 	struct gs_usb_desc *desc = config->desc;
 
 	if (usbd_bus_speed(uds_ctx) == USBD_SPEED_HS) {
-		return desc->if0_hs_out_ep.bEndpointAddress;
+		/* TODO */
+		return desc->if0_hs_out2_ep.bEndpointAddress;
 	}
 
-	return desc->if0_out_ep.bEndpointAddress;
+	/* TODO */
+	return desc->if0_out2_ep.bEndpointAddress;
 }
 
 static struct net_buf *gs_usb_buf_alloc(const struct gs_usb_config *config, uint8_t ep)
@@ -873,6 +875,7 @@ static int gs_usb_out_start(struct usbd_class_data *const c_data)
 		return -EPERM;
 	}
 
+	/* TODO */
 	ep = gs_usb_get_bulk_out_ep_addr(c_data);
 	buf = gs_usb_buf_alloc(config, ep);
 	if (buf == NULL) {
@@ -1273,6 +1276,7 @@ static int gs_usb_request(struct usbd_class_data *const c_data, struct net_buf *
 
 	LOG_DBG("request complete for ep 0x%02x (err %d)", bi->ep, err);
 
+	/* TODO */
 	if (bi->ep == gs_usb_get_bulk_out_ep_addr(c_data)) {
 		if (!atomic_test_bit(&data->state, GS_USB_STATE_CLASS_ENABLED)) {
 			LOG_WRN("class not enabled");
@@ -1334,6 +1338,7 @@ static void gs_usb_disable(struct usbd_class_data *const c_data)
 		LOG_ERR("failed to dequeue IN ep 0x%02x (err %d)", ep, err);
 	}
 
+	/* TODO */
 	ep = gs_usb_get_bulk_out_ep_addr(c_data);
 	err = usbd_ep_dequeue(uds_ctx, ep);
 	if (err != 0) {
@@ -1616,18 +1621,18 @@ struct usbd_class_api gs_usb_api = {
 				.wMaxPacketSize = sys_cpu_to_le16(64),                             \
 				.bInterval = 0x00,                                                 \
 		},                                                                                 \
-		.if0_dummy_ep = {                                                                  \
+		.if0_out1_ep = {                                                                   \
 				.bLength = sizeof(struct usb_ep_descriptor),                       \
 				.bDescriptorType = USB_DESC_ENDPOINT,                              \
-				.bEndpointAddress = GS_USB_DUMMY_EP_ADDR,                          \
+				.bEndpointAddress = GS_USB_OUT1_EP_ADDR,                           \
 				.bmAttributes = USB_EP_TYPE_BULK,                                  \
 				.wMaxPacketSize = sys_cpu_to_le16(64U),                            \
 				.bInterval = 0x00,                                                 \
 		},                                                                                 \
-		.if0_out_ep = {                                                                    \
+		.if0_out2_ep = {                                                                   \
 				.bLength = sizeof(struct usb_ep_descriptor),                       \
 				.bDescriptorType = USB_DESC_ENDPOINT,                              \
-				.bEndpointAddress = GS_USB_OUT_EP_ADDR,                            \
+				.bEndpointAddress = GS_USB_OUT2_EP_ADDR,                           \
 				.bmAttributes = USB_EP_TYPE_BULK,                                  \
 				.wMaxPacketSize = sys_cpu_to_le16(64U),                            \
 				.bInterval = 0x00,                                                 \
@@ -1640,18 +1645,18 @@ struct usbd_class_api gs_usb_api = {
 				.wMaxPacketSize = sys_cpu_to_le16(512),                            \
 				.bInterval = 0x00,                                                 \
 		},                                                                                 \
-		.if0_hs_dummy_ep = {                                                               \
+		.if0_hs_out1_ep = {                                                                \
 				.bLength = sizeof(struct usb_ep_descriptor),                       \
 				.bDescriptorType = USB_DESC_ENDPOINT,                              \
-				.bEndpointAddress = GS_USB_DUMMY_EP_ADDR,                          \
+				.bEndpointAddress = GS_USB_OUT1_EP_ADDR,                           \
 				.bmAttributes = USB_EP_TYPE_BULK,                                  \
 				.wMaxPacketSize = sys_cpu_to_le16(512U),                           \
 				.bInterval = 0x00,                                                 \
 		},                                                                                 \
-		.if0_hs_out_ep = {                                                                 \
+		.if0_hs_out2_ep = {                                                                \
 				.bLength = sizeof(struct usb_ep_descriptor),                       \
 				.bDescriptorType = USB_DESC_ENDPOINT,                              \
-				.bEndpointAddress = GS_USB_OUT_EP_ADDR,                            \
+				.bEndpointAddress = GS_USB_OUT2_EP_ADDR,                           \
 				.bmAttributes = USB_EP_TYPE_BULK,                                  \
 				.wMaxPacketSize = sys_cpu_to_le16(512U),                           \
 				.bInterval = 0x00,                                                 \
@@ -1666,8 +1671,8 @@ struct usbd_class_api gs_usb_api = {
 		(struct usb_desc_header *)&gs_usb_desc_##n.iad,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0_in_ep,                              \
-		(struct usb_desc_header *)&gs_usb_desc_##n.if0_dummy_ep,                           \
-		(struct usb_desc_header *)&gs_usb_desc_##n.if0_out_ep,                             \
+		(struct usb_desc_header *)&gs_usb_desc_##n.if0_out1_ep,                            \
+		(struct usb_desc_header *)&gs_usb_desc_##n.if0_out2_ep,                            \
 		(struct usb_desc_header *)&gs_usb_desc_##n.nil_desc,                               \
 	};                                                                                         \
                                                                                                    \
@@ -1675,8 +1680,8 @@ struct usbd_class_api gs_usb_api = {
 		(struct usb_desc_header *)&gs_usb_desc_##n.iad,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_in_ep,                           \
-		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_dummy_ep,                        \
-		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_out_ep,                          \
+		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_out1_ep,                         \
+		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_out2_ep,                         \
 		(struct usb_desc_header *)&gs_usb_desc_##n.nil_desc,                               \
 	}
 
