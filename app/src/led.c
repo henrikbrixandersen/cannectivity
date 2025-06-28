@@ -261,6 +261,7 @@ static void led_state_normal_started_entry(void *obj)
 	struct led_ctx *lctx = obj;
 
 	led_indicate_state(lctx, true);
+	led_indicate_state(lctx, lctx->error);
 	led_indicate_activity(lctx, LED_ACTIVITY_RX, false);
 	led_indicate_activity(lctx, LED_ACTIVITY_TX, false);
 }
