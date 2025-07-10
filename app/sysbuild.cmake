@@ -11,13 +11,16 @@ This PID is not unique and should not be used outside test environments."
     endif()
   endif()
 
-  # Override MCUboot options
-  set_config_string(mcuboot CONFIG_USB_DEVICE_MANUFACTURER "${SB_CONFIG_CANNECTIVITY_USB_DFU_MANUFACTURER}")
-  set_config_string(mcuboot CONFIG_USB_DEVICE_PRODUCT "${SB_CONFIG_CANNECTIVITY_USB_DFU_PRODUCT}")
-  set_config_int(mcuboot CONFIG_USB_DEVICE_VID ${SB_CONFIG_CANNECTIVITY_USB_DFU_VID})
-  set_config_int(mcuboot CONFIG_USB_DEVICE_PID ${SB_CONFIG_CANNECTIVITY_USB_DFU_PID})
-  set_config_int(mcuboot CONFIG_USB_DEVICE_DFU_PID ${SB_CONFIG_CANNECTIVITY_USB_DFU_PID})
-  set_config_int(mcuboot CONFIG_USB_MAX_POWER ${SB_CONFIG_CANNECTIVITY_USB_DFU_MAX_POWER})
+  sysbuild_get(app_CONFIG_USB_DEVICE_STACK IMAGE app VAR CONFIG_USB_DEVICE_STACK KCONFIG)
+  if(app_CONFIG_USB_DEVICE_STACK)
+    # Override MCUboot options
+    set_config_string(mcuboot CONFIG_USB_DEVICE_MANUFACTURER "${SB_CONFIG_CANNECTIVITY_USB_DFU_MANUFACTURER}")
+    set_config_string(mcuboot CONFIG_USB_DEVICE_PRODUCT "${SB_CONFIG_CANNECTIVITY_USB_DFU_PRODUCT}")
+    set_config_int(mcuboot CONFIG_USB_DEVICE_VID ${SB_CONFIG_CANNECTIVITY_USB_DFU_VID})
+    set_config_int(mcuboot CONFIG_USB_DEVICE_PID ${SB_CONFIG_CANNECTIVITY_USB_DFU_PID})
+    set_config_int(mcuboot CONFIG_USB_DEVICE_DFU_PID ${SB_CONFIG_CANNECTIVITY_USB_DFU_PID})
+    set_config_int(mcuboot CONFIG_USB_MAX_POWER ${SB_CONFIG_CANNECTIVITY_USB_DFU_MAX_POWER})
+  endif()
 
   # Only override CANnectivity firmware application options if the dfu-suffix utility is available
   find_program(DFU_SUFFIX dfu-suffix)

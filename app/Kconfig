@@ -171,8 +171,8 @@ config CANNECTIVITY_DFU_BUTTON
 	select GPIO
 	select REBOOT
 	help
-	  Enable support for rebooting into Device Firmware Upgrade (DFU) mode by holding the DFU
-	  button (identified by the "mcuboot-button0" devicetree alias).
+	  Enable support for activating Device Firmware Upgrade (DFU) mode by holding the DFU button
+	  (identified by the "mcuboot-button0" devicetree alias).
 
 config CANNECTIVITY_DFU_BUTTON_HOLD_TIME
 	int "DFU button hold time in seconds"
@@ -203,6 +203,19 @@ configdefault FLASH_MAP
 
 configdefault IMG_MANAGER
 	default y
+
+if USB_DEVICE_STACK_NEXT
+
+configdefault USBD_DFU
+	default y
+
+configdefault USBD_DFU_FLASH
+	default y
+
+configdefault IMG_ERASE_PROGRESSIVELY
+	default y
+
+endif # USB_DEVICE_STACK_NEXT
 
 endif # BOOTLOADER_MCUBOOT
 

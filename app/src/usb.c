@@ -10,6 +10,10 @@
 
 #ifdef CONFIG_USB_DEVICE_STACK_NEXT
 #include <zephyr/usb/usbd.h>
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+#include <zephyr/dfu/mcuboot.h>
+#include <zephyr/sys/reboot.h>
+#endif /* CONFIG_BOOTLOADER_MCUBOOT */
 #else /* CONFIG_USB_DEVICE_STACK_NEXT */
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/usb/bos.h>
@@ -23,7 +27,9 @@
 
 LOG_MODULE_REGISTER(usb, CONFIG_CANNECTIVITY_LOG_LEVEL);
 
-#define GS_USB_CLASS_INSTANCE_NAME "gs_usb_0"
+#define GS_USB_CLASS_INSTANCE_NAME      "gs_usb_0"
+#define DFU_RUNTIME_CLASS_INSTANCE_NAME "dfu_runtime"
+#define DFU_DFU_CLASS_INSTANCE_NAME     "dfu_dfu"
 
 #define CANNECTIVITY_USB_BCD_DRN                                                                   \
 	(USB_DEC_TO_BCD(APP_VERSION_MAJOR) << 8 | USB_DEC_TO_BCD(APP_VERSION_MINOR))
@@ -157,6 +163,146 @@ static int cannectivity_usb_vendorcode_handler(const struct usbd_context *const 
 USBD_DESC_BOS_VREQ_DEFINE(msosv2, sizeof(bos_cap_msosv2), &bos_cap_msosv2,
 			  GS_USB_MS_VENDORCODE, cannectivity_usb_vendorcode_handler, NULL);
 
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
+				    const struct usbd_msg *const msg);
+
+static void cannectivity_usb_switch_to_dfu_mode(struct usbd_context *const usbd_ctx)
+{
+	int err;
+
+	usbd_disable(usbd_ctx);
+	usbd_shutdown(usbd_ctx);
+
+	/* TODO: deduplicate copy-paste */
+	/* TODO: use USB DFU manufacturer, VID, PID etc. */
+	err = usbd_add_descriptor(&usbd, &lang);
+	if (err != 0) {
+		LOG_ERR("failed to add language descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &mfr);
+	if (err != 0) {
+		LOG_ERR("failed to add manufacturer descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &product);
+	if (err != 0) {
+		LOG_ERR("failed to add product descriptor (%d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &sn);
+	if (err != 0) {
+		LOG_ERR("failed to add S/N descriptor (err %d)", err);
+		return;
+	}
+
+	if (usbd_caps_speed(&usbd) == USBD_SPEED_HS) {
+		err = usbd_add_configuration(&usbd, USBD_SPEED_HS, &hs_config);
+		if (err != 0) {
+			LOG_ERR("failed to add high-speed configuration (err %d)", err);
+			return;
+		}
+
+		err = usbd_register_class(&usbd, DFU_DFU_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
+		if (err != 0) {
+			LOG_ERR("failed to register high-speed dfu class instance (err %d)",
+				err);
+			return;
+		}
+
+		err = usbd_device_set_code_triple(&usbd, USBD_SPEED_HS, 0, 0, 0);
+		if (err != 0) {
+			LOG_ERR("failed to set high-speed code triple (err %d)", err);
+			return;
+		}
+
+		err = usbd_device_set_bcd_usb(&usbd, USBD_SPEED_HS, USB_SRN_2_0_1);
+		if (err != 0) {
+			LOG_ERR("failed to set high-speed bcdUSB (err %d)", err);
+			return;
+		}
+	}
+
+	err = usbd_add_configuration(&usbd, USBD_SPEED_FS, &fs_config);
+	if (err != 0) {
+		LOG_ERR("failed to add full-speed configuration (err %d)", err);
+		return;
+	}
+
+	err = usbd_register_class(&usbd, DFU_DFU_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
+	if (err != 0) {
+		LOG_ERR("failed to register full-speed dfu class instance (err %d)",
+			err);
+		return;
+	}
+
+	err = usbd_device_set_code_triple(&usbd, USBD_SPEED_FS, 0, 0, 0);
+	if (err != 0) {
+		LOG_ERR("failed to set full-speed code triple (err %d)", err);
+		return;
+	}
+
+	err = usbd_device_set_bcd_usb(&usbd, USBD_SPEED_FS, USB_SRN_2_0_1);
+	if (err != 0) {
+		LOG_ERR("failed to set full-speed bcdUSB (err %d)", err);
+		return;
+	}
+
+	err = usbd_device_set_bcd_device(&usbd, sys_cpu_to_le16(CANNECTIVITY_USB_BCD_DRN));
+	if (err != 0) {
+		LOG_ERR("failed to set bcdDevice (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &usbext);
+	if (err != 0) {
+		LOG_ERR("failed to add USB 2.0 extension descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &msosv2);
+	if (err != 0) {
+		LOG_ERR("failed to add Microsoft OS 2.0 descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_init(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to initialize USB device support (err %d)", err);
+		return;
+	}
+
+	/* err = usbd_msg_register_cb(&usbd, cannectivity_usb_msg_cb); */
+	/* if (err != 0) { */
+	/* 	LOG_ERR("failed to register USB message callback (err %d)", err); */
+	/* 	return; */
+	/* } */
+
+	err = usbd_enable(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to enable USB device");
+		return;
+	}
+}
+
+static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
+				    const struct usbd_msg *const msg)
+{
+	if (msg->type == USBD_MSG_DFU_APP_DETACH) {
+		cannectivity_usb_switch_to_dfu_mode(usbd_ctx);
+	}
+
+	if (msg->type == USBD_MSG_DFU_DOWNLOAD_COMPLETED) {
+		boot_request_upgrade(false);
+		/* sys_reboot(SYS_REBOOT_COLD); */
+	}
+}
+#endif /* CONFIG_BOOTLOADER_MCUBOOT */
+
 static int cannectivity_usb_init_usbd(void)
 {
 	int err;
@@ -194,9 +340,19 @@ static int cannectivity_usb_init_usbd(void)
 
 		err = usbd_register_class(&usbd, GS_USB_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
 		if (err != 0) {
-			LOG_ERR("failed to register high-speed class instance (err %d)", err);
+			LOG_ERR("failed to register high-speed class gs_usb instance (err %d)",
+				err);
 			return err;
 		}
+
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+		err = usbd_register_class(&usbd, DFU_RUNTIME_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
+		if (err != 0) {
+			LOG_ERR("failed to register high-speed dfu runtime class instance (err %d)",
+				err);
+			return err;
+		}
+#endif /* CONFIG_BOOTLOADER_MCUBOOT */
 
 		err = usbd_device_set_code_triple(&usbd, USBD_SPEED_HS, 0, 0, 0);
 		if (err != 0) {
@@ -219,9 +375,18 @@ static int cannectivity_usb_init_usbd(void)
 
 	err = usbd_register_class(&usbd, GS_USB_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
 	if (err != 0) {
-		LOG_ERR("failed to register full-speed class instance (err %d)", err);
+		LOG_ERR("failed to register full-speed gs_usb class instance (err %d)", err);
 		return err;
 	}
+
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+	err = usbd_register_class(&usbd, DFU_RUNTIME_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
+	if (err != 0) {
+		LOG_ERR("failed to register full-speed dfu runtime class instance (err %d)",
+			err);
+		return err;
+	}
+#endif /* CONFIG_BOOTLOADER_MCUBOOT */
 
 	err = usbd_device_set_code_triple(&usbd, USBD_SPEED_FS, 0, 0, 0);
 	if (err != 0) {
@@ -258,6 +423,14 @@ static int cannectivity_usb_init_usbd(void)
 		LOG_ERR("failed to initialize USB device support (err %d)", err);
 		return err;
 	}
+
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+	err = usbd_msg_register_cb(&usbd, cannectivity_usb_msg_cb);
+	if (err != 0) {
+		LOG_ERR("failed to register USB message callback (err %d)", err);
+		return err;
+	}
+#endif /* CONFIG_BOOTLOADER_MCUBOOT */
 
 	err = usbd_enable(&usbd);
 	if (err != 0) {
