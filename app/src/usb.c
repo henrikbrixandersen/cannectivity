@@ -15,6 +15,9 @@
 #include <zephyr/usb/bos.h>
 #include <usb_descriptor.h>
 #endif /* !CONFIG_USB_DEVICE_STACK_NEXT*/
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+#include <zephyr/dfu/mcuboot.h>
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 #include <cannectivity/usb/class/gs_usb.h>
 
@@ -23,7 +26,9 @@
 
 LOG_MODULE_REGISTER(usb, CONFIG_CANNECTIVITY_LOG_LEVEL);
 
-#define GS_USB_CLASS_INSTANCE_NAME "gs_usb_0"
+#define GS_USB_CLASS_INSTANCE_NAME      "gs_usb_0"
+#define DFU_RUNTIME_CLASS_INSTANCE_NAME "dfu_runtime"
+#define DFU_DFU_CLASS_INSTANCE_NAME     "dfu_dfu"
 
 #define CANNECTIVITY_USB_BCD_DRN                                                                   \
 	(USB_DEC_TO_BCD(APP_VERSION_MAJOR) << 8 | USB_DEC_TO_BCD(APP_VERSION_MINOR))
@@ -138,6 +143,16 @@ static const uint8_t attr =
 USBD_CONFIGURATION_DEFINE(fs_config, attr, CONFIG_CANNECTIVITY_USB_MAX_POWER, &fs_config_desc);
 USBD_CONFIGURATION_DEFINE(hs_config, attr, CONFIG_CANNECTIVITY_USB_MAX_POWER, &hs_config_desc);
 
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+USBD_DESC_PRODUCT_DEFINE(product_dfu, CONFIG_CANNECTIVITY_USB_DFU_PRODUCT);
+USBD_DESC_CONFIG_DEFINE(fs_config_desc_dfu, "Full-Speed Configuration (DFU)");
+USBD_DESC_CONFIG_DEFINE(hs_config_desc_dfu, "High-Speed Configuration (DFU)");
+USBD_CONFIGURATION_DEFINE(fs_config_dfu, attr, CONFIG_CANNECTIVITY_USB_MAX_POWER,
+			  &fs_config_desc_dfu);
+USBD_CONFIGURATION_DEFINE(hs_config_dfu, attr, CONFIG_CANNECTIVITY_USB_MAX_POWER,
+			  &hs_config_desc_dfu);
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
+
 USBD_DESC_BOS_DEFINE(usbext, sizeof(bos_cap_lpm), &bos_cap_lpm);
 
 static int cannectivity_usb_vendorcode_handler(const struct usbd_context *const ctx,
@@ -156,6 +171,122 @@ static int cannectivity_usb_vendorcode_handler(const struct usbd_context *const 
 
 USBD_DESC_BOS_VREQ_DEFINE(msosv2, sizeof(bos_cap_msosv2), &bos_cap_msosv2,
 			  GS_USB_MS_VENDORCODE, cannectivity_usb_vendorcode_handler, NULL);
+
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
+				    const struct usbd_msg *const msg);
+
+void cannectivity_usb_switch_to_dfu_mode(void)
+{
+	int err;
+
+	usbd_disable(&usbd);
+	usbd_shutdown(&usbd);
+
+	err = usbd_device_set_vid(&usbd, CONFIG_CANNECTIVITY_USB_DFU_VID);
+	if (err != 0) {
+		LOG_ERR("failed to set vendor ID (err %d)", err);
+		return;
+	}
+
+	err = usbd_device_set_pid(&usbd, CONFIG_CANNECTIVITY_USB_DFU_PID);
+	if (err != 0) {
+		LOG_ERR("failed to set product ID (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &lang);
+	if (err != 0) {
+		LOG_ERR("failed to add language descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &mfr);
+	if (err != 0) {
+		LOG_ERR("failed to add manufacturer descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &product_dfu);
+	if (err != 0) {
+		LOG_ERR("failed to add product descriptor (%d)", err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &sn);
+	if (err != 0) {
+		LOG_ERR("failed to add S/N descriptor (err %d)", err);
+		return;
+	}
+
+	if (USBD_SUPPORTS_HIGH_SPEED && usbd_caps_speed(&usbd) == USBD_SPEED_HS) {
+		err = usbd_add_configuration(&usbd, USBD_SPEED_HS, &hs_config_dfu);
+		if (err != 0) {
+			LOG_ERR("failed to add high-speed configuration (err %d)", err);
+			return;
+		}
+
+		err = usbd_register_class(&usbd, DFU_DFU_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
+		if (err != 0) {
+			LOG_ERR("failed to register high-speed dfu class instance (err %d)",
+				err);
+			return;
+		}
+	}
+
+	err = usbd_add_configuration(&usbd, USBD_SPEED_FS, &fs_config_dfu);
+	if (err != 0) {
+		LOG_ERR("failed to add full-speed configuration (err %d)", err);
+		return;
+	}
+
+	err = usbd_register_class(&usbd, DFU_DFU_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
+	if (err != 0) {
+		LOG_ERR("failed to register full-speed dfu class instance (err %d)",
+			err);
+		return;
+	}
+
+	err = usbd_add_descriptor(&usbd, &usbext);
+	if (err != 0) {
+		LOG_ERR("failed to add USB 2.0 extension descriptor (err %d)", err);
+		return;
+	}
+
+	err = usbd_init(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to initialize USB device support (err %d)", err);
+		return;
+	}
+
+	err = usbd_enable(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to enable USB device");
+		return;
+	}
+
+#ifdef CONFIG_CANNECTIVITY_DFU_LED
+	err = cannectivity_dfu_led_on();
+	if (err != 0) {
+		LOG_ERR("failed to turn on DFU LED (err %d)", err);
+		return;
+	}
+#endif /* CONFIG_CANNECTIVITY_DFU_LED */
+}
+
+static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
+				    const struct usbd_msg *const msg)
+{
+	if (msg->type == USBD_MSG_DFU_APP_DETACH) {
+		cannectivity_usb_switch_to_dfu_mode();
+	}
+
+	if (msg->type == USBD_MSG_DFU_DOWNLOAD_COMPLETED) {
+		LOG_INF("DFU download completed, reboot needed");
+		boot_request_upgrade(false);
+	}
+}
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 static int cannectivity_usb_init_usbd(void)
 {
@@ -194,9 +325,19 @@ static int cannectivity_usb_init_usbd(void)
 
 		err = usbd_register_class(&usbd, GS_USB_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
 		if (err != 0) {
-			LOG_ERR("failed to register high-speed class instance (err %d)", err);
+			LOG_ERR("failed to register high-speed class gs_usb instance (err %d)",
+				err);
 			return err;
 		}
+
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+		err = usbd_register_class(&usbd, DFU_RUNTIME_CLASS_INSTANCE_NAME, USBD_SPEED_HS, 1);
+		if (err != 0) {
+			LOG_ERR("failed to register high-speed dfu runtime class instance (err %d)",
+				err);
+			return err;
+		}
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 		err = usbd_device_set_code_triple(&usbd, USBD_SPEED_HS, 0, 0, 0);
 		if (err != 0) {
@@ -219,9 +360,18 @@ static int cannectivity_usb_init_usbd(void)
 
 	err = usbd_register_class(&usbd, GS_USB_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
 	if (err != 0) {
-		LOG_ERR("failed to register full-speed class instance (err %d)", err);
+		LOG_ERR("failed to register full-speed gs_usb class instance (err %d)", err);
 		return err;
 	}
+
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+	err = usbd_register_class(&usbd, DFU_RUNTIME_CLASS_INSTANCE_NAME, USBD_SPEED_FS, 1);
+	if (err != 0) {
+		LOG_ERR("failed to register full-speed dfu runtime class instance (err %d)",
+			err);
+		return err;
+	}
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 	err = usbd_device_set_code_triple(&usbd, USBD_SPEED_FS, 0, 0, 0);
 	if (err != 0) {
@@ -258,6 +408,14 @@ static int cannectivity_usb_init_usbd(void)
 		LOG_ERR("failed to initialize USB device support (err %d)", err);
 		return err;
 	}
+
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+	err = usbd_msg_register_cb(&usbd, cannectivity_usb_msg_cb);
+	if (err != 0) {
+		LOG_ERR("failed to register USB message callback (err %d)", err);
+		return err;
+	}
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 	err = usbd_enable(&usbd);
 	if (err != 0) {
