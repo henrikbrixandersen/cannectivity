@@ -144,8 +144,9 @@ static int dfu_led_init(void)
 
 int cannectivity_dfu_init(void)
 {
-	int err;
+	int err = 0;
 
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_MCUBOOT
 	/*
 	 * Confirm updated image if running under MCUboot booloader. This could be done on
 	 * successful USB enumeration instead, but that could cause unwanted image reverts on
@@ -160,6 +161,7 @@ int cannectivity_dfu_init(void)
 
 		LOG_INF("image confirmed");
 	}
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_MCUBOOT */
 
 #ifdef CONFIG_CANNECTIVITY_DFU_LED
 	err = dfu_led_init();
@@ -175,5 +177,5 @@ int cannectivity_dfu_init(void)
 	}
 #endif /* CONFIG_CANNECTIVITY_DFU_BUTTON */
 
-	return 0;
+	return err;
 }
