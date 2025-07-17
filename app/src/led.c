@@ -102,8 +102,6 @@ static void led_tick(struct k_timer *timer);
 
 /* Variables */
 static K_TIMER_DEFINE(led_tick_timer, led_tick, NULL);
-static struct k_thread led_thread_data;
-static K_THREAD_STACK_DEFINE(led_thread_stack, CONFIG_CANNECTIVITY_LED_THREAD_STACK_SIZE);
 struct k_poll_event led_poll_events[ARRAY_SIZE(led_channel_ctx)];
 
 BUILD_ASSERT(ARRAY_SIZE(led_channel_ctx) == ARRAY_SIZE(led_poll_events));
@@ -456,45 +454,33 @@ skipped:
 	return 0;
 }
 
-static void led_thread(void *arg1, void *arg2, void *arg3)
+static void led_event_triggered_work_handler(struct k_work *work)
 {
 	struct led_ctx *lctx;
 	led_event_t event;
 	uint16_t ch;
 	int err;
 
-	ARG_UNUSED(arg1);
-	ARG_UNUSED(arg2);
-	ARG_UNUSED(arg3);
+	err = k_poll(led_poll_events, ARRAY_SIZE(led_poll_events), K_FOREVER);
+	if (err == 0) {
+		for (ch = 0; ch < ARRAY_SIZE(led_poll_events); ch++) {
+			lctx = &led_channel_ctx[ch];
 
-	for (ch = 0; ch < ARRAY_SIZE(led_channel_ctx); ch++) {
-		lctx = &led_channel_ctx[ch];
-
-		smf_set_initial(SMF_CTX(lctx), &led_states[LED_STATE_NORMAL]);
-	}
-
-	while (true) {
-		err = k_poll(led_poll_events, ARRAY_SIZE(led_poll_events), K_FOREVER);
-		if (err == 0) {
-			for (ch = 0; ch < ARRAY_SIZE(led_poll_events); ch++) {
-				lctx = &led_channel_ctx[ch];
-
-				if (led_poll_events[ch].state != K_POLL_STATE_MSGQ_DATA_AVAILABLE) {
-					continue;
-				}
-
-				err = k_msgq_get(&lctx->eventq, &event, K_NO_WAIT);
-				if (err == 0) {
-					lctx->event = event;
-
-					err = smf_run_state(SMF_CTX(lctx));
-					if (err != 0) {
-						break;
-					}
-				}
-
-				led_poll_events[ch].state = K_POLL_STATE_NOT_READY;
+			if (led_poll_events[ch].state != K_POLL_STATE_MSGQ_DATA_AVAILABLE) {
+				continue;
 			}
+
+			err = k_msgq_get(&lctx->eventq, &event, K_NO_WAIT);
+			if (err == 0) {
+				lctx->event = event;
+
+				err = smf_run_state(SMF_CTX(lctx));
+				if (err != 0) {
+					break;
+				}
+			}
+
+			led_poll_events[ch].state = K_POLL_STATE_NOT_READY;
 		}
 	}
 
@@ -536,12 +522,9 @@ int cannectivity_led_init(void)
 
 		k_poll_event_init(&led_poll_events[ch], K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 				  K_POLL_MODE_NOTIFY_ONLY, &lctx->eventq);
-	}
 
-	k_thread_create(&led_thread_data, led_thread_stack, K_THREAD_STACK_SIZEOF(led_thread_stack),
-			led_thread, NULL, NULL, NULL, CONFIG_CANNECTIVITY_LED_THREAD_PRIO, 0,
-			K_NO_WAIT);
-	k_thread_name_set(&led_thread_data, "led");
+		smf_set_initial(SMF_CTX(lctx), &led_states[LED_STATE_NORMAL]);
+	}
 
 	k_timer_start(&led_tick_timer, K_MSEC(LED_TICK_MS), K_MSEC(LED_TICK_MS));
 
