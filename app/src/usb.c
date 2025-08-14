@@ -318,8 +318,17 @@ void cannectivity_usb_switch_to_dfu_mode(void)
 {
 	int err;
 
-	usbd_disable(&usbd);
-	usbd_shutdown(&usbd);
+	err = usbd_disable(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to disable USB device (err %d)", err);
+		return;
+	}
+
+	err = usbd_shutdown(&usbd);
+	if (err != 0) {
+		LOG_ERR("failed to shutdown USB device (err %d)", err);
+		return;
+	}
 
 	bos_cap_msosv2.cap.wMSOSDescriptorSetTotalLength =
 		sizeof(struct cannectivity_dfu_msosv2_descriptor);
@@ -443,15 +452,39 @@ static void cannectivity_usb_reboot(struct k_work *work)
 	sys_reboot(SYS_REBOOT_COLD);
 }
 #endif /* CONFIG_CANNECTIVITY_DFU_REBOOT_DELAY */
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
 				    const struct usbd_msg *const msg)
 {
-	if (msg->type == USBD_MSG_DFU_APP_DETACH) {
-		cannectivity_usb_switch_to_dfu_mode();
-	}
+	int err;
 
-	if (msg->type == USBD_MSG_DFU_DOWNLOAD_COMPLETED) {
+	LOG_INF("msg->type: %u", msg->type);
+
+	switch (msg->type) {
+#ifdef CONFIG_CANNECTIVITY_USB_SELF_POWERED
+	case USBD_MSG_VBUS_READY:
+		LOG_INF("enabling 2");
+		err = usbd_enable(&usbd);
+		if (err != 0) {
+			LOG_ERR("failed to enable USB device");
+		}
+		break;
+
+	case USBD_MSG_VBUS_REMOVED:
+		err = usbd_disable(usbd_ctx);
+		if (err != 0) {
+			LOG_ERR("failed to disable USB device (err %d)", err);
+		}
+		break;
+#endif /* CONFIG_CANNECTIVITY_USB_SELF_POWERED */
+
+#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+	case USBD_MSG_DFU_APP_DETACH:
+		cannectivity_usb_switch_to_dfu_mode();
+		break;
+
+	case USBD_MSG_DFU_DOWNLOAD_COMPLETED:
 		LOG_INF("DFU download completed, reboot needed");
 		boot_request_upgrade(BOOT_UPGRADE_TEST);
 
@@ -459,9 +492,13 @@ static void cannectivity_usb_msg_cb(struct usbd_context *const usbd_ctx,
 		k_work_init_delayable(&usb_reboot_work, cannectivity_usb_reboot);
 		k_work_schedule(&usb_reboot_work, K_MSEC(CONFIG_CANNECTIVITY_DFU_REBOOT_DELAY));
 #endif /* CONFIG_CANNECTIVITY_DFU_REBOOT_DELAY */
+		break;
+#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
+
+	default:
+		/* Ignore message */
 	}
 }
-#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
 
 static int cannectivity_usb_init_usbd(void)
 {
@@ -597,18 +634,21 @@ static int cannectivity_usb_init_usbd(void)
 		return err;
 	}
 
-#ifdef CONFIG_CANNECTIVITY_DFU_BACKEND_APP
+#if defined(CONFIG_CANNECTIVITY_DFU_BACKEND_APP) || defined(CONFIG_CANNECTIVITY_USB_SELF_POWERED)
 	err = usbd_msg_register_cb(&usbd, cannectivity_usb_msg_cb);
 	if (err != 0) {
 		LOG_ERR("failed to register USB message callback (err %d)", err);
 		return err;
 	}
-#endif /* CONFIG_CANNECTIVITY_DFU_BACKEND_APP */
+#endif
 
-	err = usbd_enable(&usbd);
-	if (err != 0) {
-		LOG_ERR("failed to enable USB device");
-		return err;
+	if (!IS_ENABLED(CONFIG_CANNECTIVITY_USB_SELF_POWERED) || !usbd_can_detect_vbus(&usbd)) {
+		LOG_INF("enabling 1");
+		err = usbd_enable(&usbd);
+		if (err != 0) {
+			LOG_ERR("failed to enable USB device");
+			return err;
+		}
 	}
 
 	return 0;
