@@ -7,6 +7,7 @@ Configuration of gs_usb test suite.
 
 import re
 import logging
+import subprocess
 import time
 import pytest
 
@@ -17,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 def pytest_addoption(parser) -> None:
     """Add local parser options to pytest."""
+    parser.addoption('--usb-attach-cmd', type=str, default=None,
+                     help='Command to run for USB attach i.e. for attaching USB/IP (default: None)')
+    parser.addoption('--usb-detach-cmd', type=str, default=None,
+                     help='Command to run for USB detach i.e. for detaching USB/IP (default: None)')
     parser.addoption('--usb-delay', type=int, default=5,
                      help='Delay to wait for USB enumeration after flashing (default: 5 seconds)')
     parser.addoption('--usb-sn', type=str, default=None,
@@ -72,6 +77,12 @@ def fixture_usb_sn(request, dut: DeviceAdapter) -> str:
 @pytest.fixture(name='dev', scope='module')
 def fixture_gs_usb(request, usb_vid: int, usb_pid: int, usb_sn: str) -> GsUSB:
     """Return gs_usb instance for testing"""
+
+    # TODO: detach, but where?
+    cmd = request.config.getoption('--usb-attach-cmd')
+    if cmd is not None:
+        logger.info('Running "%s" for attaching USB...', cmd)
+        subprocess.run(cmd, shell=True, check=True)
 
     delay = request.config.getoption('--usb-delay')
     logger.info('Waiting %d seconds for USB enumeration...', delay)

@@ -26,3 +26,12 @@ tests:
       - frdm_k64f/mk64f12
     extra_args:
       - FILE_SUFFIX=usbd_next
+  usb.gs_usb.host.usbd_next.native_sim:
+    platform_allow:
+      - native_sim/native/64
+    required_snippets:
+      - usbip-native-sim
+    extra_configs:
+      - CONFIG_UART_NATIVE_PTY_0_ON_STDINOUT=y
+    extra_args:
+      - FILE_SUFFIX=usbd_next

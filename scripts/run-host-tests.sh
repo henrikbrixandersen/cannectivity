@@ -39,6 +39,9 @@ cleanup() {
 
 trap cleanup EXIT SIGINT
 
+echo "Loading USB/IP kernel module"
+sudo modprobe vhci_hcd
+
 echo "Bringing up network for USB/IP"
 # TODO: fix net-setup.sh up returning error 2
 sudo $NET_TOOLS_DIR/net-setup.sh up || true
@@ -48,6 +51,10 @@ for i in `seq 0 2`; do
     echo "Bringing up virtual CAN interface $vcan"
     sudo $NET_TOOLS_DIR/can-setup.sh --iface $vcan up
 done
+
+west twister -p native_sim/native/64 -c -v -T $CANNECTIVITY_SCRIPTS_DIR/../tests/subsys/usb/gs_usb/host/ -s usb.gs_usb.host.usbd_next.native_sim -X usb --pytest-args='--usb-delay=10' --pytest-args='--usb-attach-cmd=sudo usbip attach -r 192.0.2.1 -b 1-1'
+
+exit
 
 echo "Starting candump"
 candump -t a -H any > host-tests-candump.log 2>&1 &
@@ -64,7 +71,6 @@ echo "Waiting for CANnectivity to start..."
 sleep 10
 
 echo "Attaching USB/IP"
-sudo modprobe vhci_hcd
 sudo usbip attach -r 192.0.2.1 -b 1-1
 
 echo "Waiting for USB/IP to attach..."
