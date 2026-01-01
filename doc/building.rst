@@ -70,7 +70,7 @@ Once in DFU mode, the CANnectivity firmware can be updated using
 
 .. code-block:: console
 
-   dfu-util -a 1 -D build/app/zephyr/zephyr.signed.bin.dfu
+   dfu-util -a 0 -D build/app/zephyr/zephyr.signed.bin.dfu
 
 .. _MCUboot:
    https://www.trustedfirmware.org/projects/mcuboot/

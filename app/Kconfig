@@ -201,12 +201,19 @@ config CANNECTIVITY_DFU_BACKEND_MCUBOOT
 	  Device Firmware Upgrade is handled by rebooting into MCUboot, with the bootloader exposing
 	  an USB DFU or serial recovery interface.
 
+	  Device Firmware Upgrade will download the new firmware image directly to the
+	  slot0_partition in flash.
+
 config CANNECTIVITY_DFU_BACKEND_APP
 	bool "Application"
 	depends on BOOTLOADER_MCUBOOT && !MCUBOOT_BOOTLOADER_MODE_SINGLE_APP && USB_DEVICE_STACK_NEXT
 	help
 	  Device Firmware Upgrade is handled by the CANnectivity firmware application. The upgrade
 	  process is handled by MCUboot upon reboot.
+
+	  Device Firmware Upgrade will download the new firmware image to the slot1_partition in
+	  flash, and (optionally) reboot into MCUboot, which will swap slot0_partition and
+	  slot1_partition images to perform the device firmware upgrade
 
 endchoice
 
