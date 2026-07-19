@@ -639,7 +639,7 @@ static int gs_usb_request_mode(const struct device *dev, uint16_t ch,
 		channel->started = true;
 		break;
 	default:
-		LOG_ERR("unsupported mode %d requested for channel %u channel",
+		LOG_ERR("unsupported mode %d requested for channel %u",
 			sys_le32_to_cpu(dm->mode), ch);
 		return -ENOTSUP;
 	}

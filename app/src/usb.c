@@ -343,7 +343,7 @@ void cannectivity_usb_switch_to_dfu_mode(void)
 
 	err = usbd_add_descriptor(&usbd, &product_dfu);
 	if (err != 0) {
-		LOG_ERR("failed to add product descriptor (%d)", err);
+		LOG_ERR("failed to add product descriptor (err %d)", err);
 		return;
 	}
 
@@ -473,7 +473,7 @@ int cannectivity_usb_init(void)
 
 	err = usbd_add_descriptor(&usbd, &product);
 	if (err != 0) {
-		LOG_ERR("failed to add product descriptor (%d)", err);
+		LOG_ERR("failed to add product descriptor (err %d)", err);
 		return err;
 	}
 
