@@ -565,7 +565,7 @@ int cannectivity_usb_init(void)
 		return err;
 	}
 
-	err = usbd_device_set_bcd_device(&usbd, sys_cpu_to_le16(CANNECTIVITY_USB_BCD_DRN));
+	err = usbd_device_set_bcd_device(&usbd, CANNECTIVITY_USB_BCD_DRN);
 	if (err != 0) {
 		LOG_ERR("failed to set bcdDevice (err %d)", err);
 		return err;
