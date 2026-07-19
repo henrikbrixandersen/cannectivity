@@ -676,6 +676,10 @@ static int gs_usb_request_identify(const struct device *dev, uint16_t ch,
 		return -EINVAL;
 	}
 
+	if (data->ops.event == NULL) {
+		return -ENOTSUP;
+	}
+
 	mode = sys_le32_to_cpu(im->mode);
 
 	switch (mode) {
