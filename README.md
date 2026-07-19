@@ -73,7 +73,7 @@ Building the CANnectivity firmware requires a proper Zephyr development environm
 official [Zephyr Getting Started
 Guide](https://docs.zephyrproject.org/latest/getting_started/index.html) to establish one.
 
-Once a proper Zephyr development environment is established, inialize the workspace folder (here
+Once a proper Zephyr development environment is established, initialize the workspace folder (here
 `my-workspace`). This will clone the CANnectivity firmware repository and download the necessary
 Zephyr modules:
 

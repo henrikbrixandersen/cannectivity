@@ -61,7 +61,7 @@ class GsUSBCANChannelFeature(IntFlag):
     """
     Geschwister Schneider USB/CAN protocol CAN channel features.
     """
-    # CAN channel supports listen-onlu mode, in which it is not allowed to send dominant bits.
+    # CAN channel supports listen-only mode, in which it is not allowed to send dominant bits.
     LISTEN_ONLY = 2**0
     # CAN channel supports in loopback mode, which it receives own frames.
     LOOP_BACK = 2**1
