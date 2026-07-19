@@ -1070,6 +1070,7 @@ static void gs_usb_can_state_change_callback(const struct device *can_dev, enum 
 		break;
 	case CAN_STATE_STOPPED:
 		/* Not reported */
+		net_buf_unref(buf);
 		return;
 	}
 
