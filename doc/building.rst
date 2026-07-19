@@ -46,7 +46,7 @@ To build CANnectivity with MCUboot integration for USB DFU use :external+zephyr:
 
 .. code-block:: console
 
-   west build -b frdm_k64f/mk64f12 --sysbuild ../custom/cannectivity/app/
+   west build -b frdm_k64f/mk64f12 --sysbuild cannectivity/app/
 
 After building, MCUboot and the CANnectivity firmware can be flashed to the board by running the
 ``west flash`` command.
