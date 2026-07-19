@@ -446,9 +446,9 @@ static void gs_usb_bittiming_to_can_timing(const struct gs_usb_device_bittiming 
 		result->phase_seg1 = max->phase_seg1;
 	}
 
-	LOG_DBG("request: prop_seg %u, phase_seg1 %u, phase_seq2 %u, sjw %u, brp %u", dbt->prop_seg,
+	LOG_DBG("request: prop_seg %u, phase_seg1 %u, phase_seg2 %u, sjw %u, brp %u", dbt->prop_seg,
 		dbt->phase_seg1, dbt->phase_seg2, dbt->sjw, dbt->brp);
-	LOG_DBG("result: prop_seg %u, phase_seg1 %u, phase_seq2 %u, sjw %u, brp %u",
+	LOG_DBG("result: prop_seg %u, phase_seg1 %u, phase_seg2 %u, sjw %u, brp %u",
 		result->prop_seg, result->phase_seg1, result->phase_seg2, result->sjw,
 		result->prescaler);
 };
