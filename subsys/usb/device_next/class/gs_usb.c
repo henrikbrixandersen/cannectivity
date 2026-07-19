@@ -1214,7 +1214,7 @@ static void gs_usb_rx_thread(void *p1, void *p2, void *p3)
 			event = GS_USB_EVENT_CHANNEL_ACTIVITY_TX;
 		}
 
-		__ASSERT_NO_MSG(ch <= data->nchannels);
+		__ASSERT_NO_MSG(ch < data->nchannels);
 		channel = &data->channels[ch];
 
 		if (k_sem_take(&channel->rx_overflows, K_NO_WAIT) == 0) {
