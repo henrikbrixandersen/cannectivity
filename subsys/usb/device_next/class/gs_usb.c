@@ -491,7 +491,7 @@ static int gs_usb_request_bittiming(const struct device *dev, uint16_t ch,
 	min = can_get_timing_min(channel->dev);
 	max = can_get_timing_max(channel->dev);
 
-	gs_usb_bittiming_to_can_timing(dbtp, min, max, &timing);
+	gs_usb_bittiming_to_can_timing(&dbt, min, max, &timing);
 
 	err = can_set_timing(channel->dev, &timing);
 	if (err != 0U) {
@@ -1346,7 +1346,7 @@ static void gs_usb_tx_thread(void *p1, void *p2, void *p3)
 			frame.flags |= CAN_FRAME_IDE;
 			frame.id = can_id & CAN_EXT_ID_MASK;
 		} else {
-			frame.id = hdr->can_id & CAN_STD_ID_MASK;
+			frame.id = can_id & CAN_STD_ID_MASK;
 		}
 
 		if (IS_ENABLED(CONFIG_CAN_FD_MODE)) {
