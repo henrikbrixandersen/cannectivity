@@ -40,14 +40,14 @@ struct gs_usb_desc {
 #if USBD_SUPPORTS_HIGH_SPEED
 	struct usb_ep_descriptor if0_hs_out2_ep;
 #endif /* USBD_SUPPORTS_HIGH_SPEED */
-	struct usb_desc_header nil_desc;
+	const struct usb_desc_header nil_desc;
 };
 
 struct gs_usb_config {
 	struct gs_usb_desc *desc;
 	struct usbd_class_data *c_data;
-	const struct usb_desc_header **fs_desc;
-	const struct usb_desc_header **hs_desc;
+	const struct usb_desc_header *const *const fs_desc;
+	const struct usb_desc_header *const *const hs_desc;
 	struct net_buf_pool *pool;
 	struct usbd_desc_node *if0_str_desc;
 };
@@ -1671,7 +1671,8 @@ int gs_usb_register(const struct device *dev, const struct device **channels, si
 	return 0;
 }
 
-static void *gs_usb_get_desc(struct usbd_class_data *const c_data, const enum usbd_speed speed)
+static const void *gs_usb_get_desc(struct usbd_class_data *const c_data,
+				   const enum usbd_speed speed)
 {
 	const struct device *dev = usbd_class_get_private(c_data);
 	const struct gs_usb_config *config = dev->config;
@@ -1751,7 +1752,7 @@ static const struct usbd_cctx_vendor_req gs_usb_vendor_requests =
 			GS_USB_REQUEST_GET_STATE);
 /* clang-format on */
 
-struct usbd_class_api gs_usb_api = {
+static const struct usbd_class_api gs_usb_api = {
 	.control_to_dev = gs_usb_control_to_dev,
 	.control_to_host = gs_usb_control_to_host,
 	.request = gs_usb_request,
@@ -1835,7 +1836,7 @@ struct usbd_class_api gs_usb_api = {
 		},                                                                                 \
 	};                                                                                         \
                                                                                                    \
-	static const struct usb_desc_header *gs_usb_fs_desc_##n[] = {                              \
+	static const struct usb_desc_header *const gs_usb_fs_desc_##n[] = {                        \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0_in_ep,                              \
 		IF_ENABLED(CONFIG_USBD_GS_USB_COMPATIBILITY_MODE, (                                \
@@ -1845,7 +1846,7 @@ struct usbd_class_api gs_usb_api = {
 	};                                                                                         \
                                                                                                    \
 	IF_ENABLED(USBD_SUPPORTS_HIGH_SPEED, (                                                     \
-	static const struct usb_desc_header *gs_usb_hs_desc_##n[] = {                              \
+	static const struct usb_desc_header *const gs_usb_hs_desc_##n[] = {                        \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0,                                    \
 		(struct usb_desc_header *)&gs_usb_desc_##n.if0_hs_in_ep,                           \
 		IF_ENABLED(CONFIG_USBD_GS_USB_COMPATIBILITY_MODE, (                                \
